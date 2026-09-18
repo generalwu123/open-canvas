@@ -8,7 +8,11 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   replicateApiToken: '',
   cyberbaraApiKey: '',
   cyberbaraBaseUrl: 'https://cyberbara.com',
-  storageProvider: 'disabled',
+  bailianApiKey: '',
+  bailianBaseUrl: 'https://dashscope.aliyuncs.com',
+  // Zero-config default: uploads land on the server disk so canvas uploads
+  // work before anyone opens the settings dialog.
+  storageProvider: 'local',
   storageS3Endpoint: '',
   storageS3Region: 'auto',
   storageS3AccessKeyId: '',
@@ -24,7 +28,9 @@ const baseSchema = z.object({
   replicateApiToken: z.string(),
   cyberbaraApiKey: z.string(),
   cyberbaraBaseUrl: z.string(),
-  storageProvider: z.enum(['disabled', 's3-compatible', 'cyberbara']),
+  bailianApiKey: z.string(),
+  bailianBaseUrl: z.string(),
+  storageProvider: z.enum(['disabled', 'local', 's3-compatible', 'cyberbara']),
   storageS3Endpoint: z.string(),
   storageS3Region: z.string(),
   storageS3AccessKeyId: z.string(),
@@ -56,6 +62,18 @@ export const providerSettingsSchema = baseSchema.superRefine((value, ctx) => {
       message: 'Cyberbara base URL must be a valid URL.',
     });
   }
+
+  if (
+    value.bailianBaseUrl.trim() &&
+    !z.url().safeParse(value.bailianBaseUrl.trim()).success
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['bailianBaseUrl'],
+      message: 'Bailian base URL must be a valid URL.',
+    });
+  }
+
 
   if (
     value.storageProvider === 'cyberbara' &&

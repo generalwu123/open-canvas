@@ -45,6 +45,9 @@ const PUBLIC_MODEL_LABELS: Record<string, string> = {
   'nano-banana-pro': 'Nano Banana Pro',
   'gpt-image-2': 'GPT Image 2',
   'midjourney-v7': 'Midjourney V7',
+  'wan2.7-image': 'Wan 2.7 Image',
+  'wan2.7-image-pro': 'Wan 2.7 Image Pro',
+  'qwen-image-edit': 'Qwen Image Edit',
   'sora-2': 'Sora 2',
   'sora-2-pro': 'Sora 2 Pro',
   'seedance-1-pro': 'Seedance 1 Pro',
@@ -66,6 +69,8 @@ const PUBLIC_MODEL_LABELS: Record<string, string> = {
   'veo-3.1-fast': 'Veo 3.1 Fast',
   'veo-3.1-quality': 'Veo 3.1 Quality',
   'gemini-omni-video': 'Gemini Omni Video',
+  'wan3.0-video': 'Wan 3.0 Video',
+  'wan3.0-video-prime': 'Wan 3.0 Video Prime',
   'kling-video-o1': 'Kling Video O1',
 };
 
@@ -175,6 +180,26 @@ const PUBLIC_MODEL_REGISTRY: Record<string, PublicModelDefinition> = {
     scenes: {
       'text-to-image': { provider: 'legnext', model: 'midjourney-v7' },
       'image-to-image': { provider: 'legnext', model: 'midjourney-v7' },
+    },
+  },
+  'wan2.7-image': {
+    mediaType: AIMediaType.IMAGE,
+    scenes: {
+      'text-to-image': { provider: 'bailian', model: 'wan2.7-image' },
+      'image-to-image': { provider: 'bailian', model: 'wan2.7-image' },
+    },
+  },
+  'wan2.7-image-pro': {
+    mediaType: AIMediaType.IMAGE,
+    scenes: {
+      'text-to-image': { provider: 'bailian', model: 'wan2.7-image-pro' },
+      'image-to-image': { provider: 'bailian', model: 'wan2.7-image-pro' },
+    },
+  },
+  'qwen-image-edit': {
+    mediaType: AIMediaType.IMAGE,
+    scenes: {
+      'image-to-image': { provider: 'bailian', model: 'qwen-image-edit' },
     },
   },
   'sora-2': {
@@ -419,6 +444,22 @@ const PUBLIC_MODEL_REGISTRY: Record<string, PublicModelDefinition> = {
         provider: 'fal',
         model: 'fal-ai/kling-video/o1/video-to-video/edit',
       },
+    },
+  },
+  'wan3.0-video': {
+    mediaType: AIMediaType.VIDEO,
+    scenes: {
+      'text-to-video': { provider: 'bailian', model: 'wan3.0-video' },
+      'image-to-video': { provider: 'bailian', model: 'wan3.0-video' },
+      'video-to-video': { provider: 'bailian', model: 'wan3.0-video' },
+    },
+  },
+  'wan3.0-video-prime': {
+    mediaType: AIMediaType.VIDEO,
+    scenes: {
+      'text-to-video': { provider: 'bailian', model: 'wan3.0-video-prime' },
+      'image-to-video': { provider: 'bailian', model: 'wan3.0-video-prime' },
+      'video-to-video': { provider: 'bailian', model: 'wan3.0-video-prime' },
     },
   },
 };

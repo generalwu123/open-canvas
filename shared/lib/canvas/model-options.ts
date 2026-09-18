@@ -28,6 +28,19 @@ const GPT_IMAGE_2_IMAGE_ASPECT_RATIO_OPTIONS = [
   '4:3',
   '3:4',
 ] as const;
+// Wan 2.7 image models take an explicit "width*height" size that the client
+// derives from resolution + aspect ratio, so the ratio list stays compact.
+const WAN_IMAGE_ASPECT_RATIO_OPTIONS = [
+  'auto',
+  '1:1',
+  '16:9',
+  '9:16',
+  '4:3',
+  '3:4',
+  '3:2',
+  '2:3',
+  '21:9',
+] as const;
 const MIDJOURNEY_IMAGE_ASPECT_RATIO_OPTIONS = [
   '21:9',
   '16:9',
@@ -122,6 +135,23 @@ const HAPPYHORSE_RESOLUTION_OPTIONS = ['720P', '1080P'] as const;
 const HAILUO_23_MODELS = ['hailuo-2.3-standard', 'hailuo-2.3-pro'] as const;
 const HAILUO_23_DURATION_OPTIONS = ['6', '10'] as const;
 const HAILUO_23_RESOLUTION_OPTIONS = ['768P', '1080P'] as const;
+const WAN3_VIDEO_MODELS = ['wan3.0-video', 'wan3.0-video-prime'] as const;
+// Wan 3.0 accepts 2-30s for generate-only scenes; 480P/720P/1080P output tiers.
+const WAN3_VIDEO_DURATION_OPTIONS = Array.from(
+  { length: 29 },
+  (_, index) => String(index + 2)
+) as string[];
+// Ordered highest-first: the first entry is the fallback used when a node still
+// carries a legacy lowercase value like "720p", so those nodes land on 1080P.
+const WAN3_VIDEO_RESOLUTION_OPTIONS = ['1080P', '720P', '480P'] as const;
+const WAN3_VIDEO_ASPECT_RATIO_OPTIONS = [
+  'adaptive',
+  '16:9',
+  '9:16',
+  '1:1',
+  '4:3',
+  '3:4',
+] as const;
 const VIDEO_MODELS_WITH_SCENELESS_ASPECT_RATIO = new Set<string>([
   GEMINI_OMNI_VIDEO_MODEL,
   'sora-2-pro',
@@ -130,6 +160,7 @@ const VIDEO_MODELS_WITH_SCENELESS_ASPECT_RATIO = new Set<string>([
   ...SEEDANCE_2_OFFICIAL_MODELS,
   HAPPYHORSE_TEXT_TO_VIDEO_MODEL,
   HAPPYHORSE_REFERENCE_MODEL,
+  ...WAN3_VIDEO_MODELS,
 ]);
 const VIDEO_MODELS_WITH_SCENELESS_DURATION = new Set<string>([
   GEMINI_OMNI_VIDEO_MODEL,
@@ -144,6 +175,7 @@ const VIDEO_MODELS_WITH_SCENELESS_DURATION = new Set<string>([
   HAPPYHORSE_FIRST_FRAME_MODEL,
   HAPPYHORSE_REFERENCE_MODEL,
   ...HAILUO_23_MODELS,
+  ...WAN3_VIDEO_MODELS,
 ]);
 const VIDEO_MODELS_WITH_SCENELESS_RESOLUTION = new Set<string>([
   GEMINI_OMNI_VIDEO_MODEL,
@@ -154,6 +186,7 @@ const VIDEO_MODELS_WITH_SCENELESS_RESOLUTION = new Set<string>([
   ...SEEDANCE_2_OFFICIAL_MODELS,
   ...HAPPYHORSE_MODELS,
   ...HAILUO_23_MODELS,
+  ...WAN3_VIDEO_MODELS,
 ]);
 
 function normalizeValue(
@@ -198,6 +231,20 @@ export function isNanoBananaProCanvasImageModel(model: string): boolean {
   return model === 'nano-banana-pro';
 }
 
+export function isWanCanvasImageModel(model: string): boolean {
+  return (
+    model === 'wan2.7-image' ||
+    model === 'wan2.7-image-pro' ||
+    model === 'qwen-image-edit'
+  );
+}
+
+export function isWanCanvasVideoModel(model: string): boolean {
+  return WAN3_VIDEO_MODELS.includes(
+    model as (typeof WAN3_VIDEO_MODELS)[number]
+  );
+}
+
 export function getCanvasImageAspectRatioOptions(model: string): string[] {
   if (isMidjourneyCanvasImageModel(model)) {
     return [...MIDJOURNEY_IMAGE_ASPECT_RATIO_OPTIONS];
@@ -205,6 +252,10 @@ export function getCanvasImageAspectRatioOptions(model: string): string[] {
 
   if (isGptImage2CanvasImageModel(model)) {
     return [...GPT_IMAGE_2_IMAGE_ASPECT_RATIO_OPTIONS];
+  }
+
+  if (isWanCanvasImageModel(model)) {
+    return [...WAN_IMAGE_ASPECT_RATIO_OPTIONS];
   }
 
   if (isNanoBanana2CanvasImageModel(model)) {
@@ -269,6 +320,17 @@ export function normalizeCanvasImageSettingsForModel({
   const nanoBananaAspectRatioOptions = isNanoBanana2CanvasImageModel(model)
     ? NANO_BANANA_2_IMAGE_ASPECT_RATIO_OPTIONS
     : NANO_BANANA_PRO_IMAGE_ASPECT_RATIO_OPTIONS;
+
+  if (isWanCanvasImageModel(model)) {
+    return {
+      resolution: normalizeValue(resolution, ['1K', '2K', '4K'], '2K'),
+      aspectRatio: normalizeValue(
+        aspectRatio,
+        WAN_IMAGE_ASPECT_RATIO_OPTIONS,
+        'auto'
+      ),
+    };
+  }
 
   return {
     resolution: nextResolution,
@@ -340,6 +402,10 @@ export function getCanvasVideoDurationOptions(
     return [...HAILUO_23_DURATION_OPTIONS];
   }
 
+  if (WAN3_VIDEO_MODELS.includes(model as (typeof WAN3_VIDEO_MODELS)[number])) {
+    return [...WAN3_VIDEO_DURATION_OPTIONS];
+  }
+
   return EMPTY_OPTIONS;
 }
 
@@ -390,6 +456,10 @@ export function getCanvasVideoAspectRatioOptions(
     return [...HAPPYHORSE_ASPECT_RATIO_OPTIONS];
   }
 
+  if (WAN3_VIDEO_MODELS.includes(model as (typeof WAN3_VIDEO_MODELS)[number])) {
+    return [...WAN3_VIDEO_ASPECT_RATIO_OPTIONS];
+  }
+
   return EMPTY_OPTIONS;
 }
 
@@ -434,6 +504,10 @@ export function getCanvasVideoResolutionOptions(
 
   if (HAILUO_23_MODELS.includes(model as (typeof HAILUO_23_MODELS)[number])) {
     return [...HAILUO_23_RESOLUTION_OPTIONS];
+  }
+
+  if (WAN3_VIDEO_MODELS.includes(model as (typeof WAN3_VIDEO_MODELS)[number])) {
+    return [...WAN3_VIDEO_RESOLUTION_OPTIONS];
   }
 
   return EMPTY_OPTIONS;

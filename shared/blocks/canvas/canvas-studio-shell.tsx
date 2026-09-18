@@ -35,10 +35,12 @@ import {
   Download,
   Expand,
   ExternalLink,
+  FileJson,
   Headphones,
   Image as ImageIcon,
   ImagePlus,
   Italic,
+  LayoutGrid,
   ListVideo,
   LoaderCircle,
   Map as MapIcon,
@@ -78,6 +80,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import {
@@ -133,6 +136,7 @@ import {
   getCanvasVideoDurationOptions as getCanvasVideoDurationOptionsFromConfig,
   getCanvasVideoResolutionOptions as getCanvasVideoResolutionOptionsFromConfig,
   isMidjourneyCanvasImageModel as isMidjourneyCanvasImageModelFromConfig,
+  isWanCanvasVideoModel,
   normalizeCanvasImageSettingsForModel as normalizeCanvasImageSettingsForModelFromConfig,
   normalizeCanvasVideoSettingsForModel as normalizeCanvasVideoSettingsForModelFromConfig,
 } from '@/shared/lib/canvas/model-options';
@@ -427,6 +431,10 @@ function isKieSeedanceCanvasVideoModel(model: string): boolean {
 
 function isSeedanceCanvasReferenceModeModel(model: string): boolean {
   return isArkCanvasVideoModel(model) || isKieSeedanceCanvasVideoModel(model);
+}
+
+function isCanvasReferenceModeModel(model: string): boolean {
+  return isSeedanceCanvasReferenceModeModel(model) || isWanCanvasVideoModel(model);
 }
 
 function isCanvasLeftHandle(handleId: CanvasConnectionHandleId): boolean {
@@ -2390,6 +2398,11 @@ function quoteCanvasNodeCredits(
               isArkCanvasVideoModel(nodeData.model)
                 ? nodeData.referenceMode
                 : undefined,
+            wan_reference_mode:
+              scene === 'image-to-video' &&
+              isWanCanvasVideoModel(nodeData.model)
+                ? nodeData.referenceMode
+                : undefined,
             image_input: inputs.imageInputs.map((item) => item.url),
             video_input: inputs.videoInputs.map((item) => item.url),
             audio_input: inputs.audioInputs.map((item) => item.url),
@@ -2450,6 +2463,12 @@ function quoteCanvasNodeCredits(
     options.ark_mode.trim().length === 0
   ) {
     delete options.ark_mode;
+  }
+  if (
+    typeof options.wan_reference_mode !== 'string' ||
+    options.wan_reference_mode.trim().length === 0
+  ) {
+    delete options.wan_reference_mode;
   }
   if ('audio_input' in options) {
     const audioInput = options.audio_input;
@@ -3607,8 +3626,12 @@ const edgeTypes = {
 
 function CanvasStudioInner({
   initialCanvas,
+  onImportJson,
+  onExportJson,
 }: {
   initialCanvas: CanvasDocumentRecord;
+  onImportJson?: () => void;
+  onExportJson?: () => void;
 }) {
   const locale = useCanvasLocale();
   const t = useCanvasTranslations();
@@ -3730,9 +3753,9 @@ function CanvasStudioInner({
     selectedNodeData?.nodeType === 'video'
       ? getRequiredModelScene(selectedNodeData, selectedReferences)
       : null;
-  const shouldShowSeedanceReferenceMode =
+  const shouldShowReferenceMode =
     selectedNodeData?.nodeType === 'video' &&
-    isSeedanceCanvasReferenceModeModel(selectedNodeData.model) &&
+    isCanvasReferenceModeModel(selectedNodeData.model) &&
     selectedMediaMode === 'generate' &&
     selectedVideoScene === 'image-to-video';
   const selectedVideoAspectRatioOptions =
@@ -6094,6 +6117,45 @@ function CanvasStudioInner({
             </Link>
           </Button>
 
+          {onImportJson || onExportJson ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 bg-white/[0.03] text-white hover:bg-white/10 hover:text-white"
+                >
+                  <FileJson className="size-4" />
+                  {canvasT(t, 'common.file')}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="border-white/10 bg-[#121212] text-white"
+              >
+                <DropdownMenuItem asChild>
+                  <Link href="/canvas">
+                    <LayoutGrid className="size-4" />
+                    {canvasT(t, 'common.backToCanvasList')}
+                  </Link>
+                </DropdownMenuItem>
+                {onImportJson ? (
+                  <DropdownMenuItem onClick={onImportJson}>
+                    <Upload className="size-4" />
+                    {canvasT(t, 'common.importJson')}
+                  </DropdownMenuItem>
+                ) : null}
+                {onExportJson ? (
+                  <DropdownMenuItem onClick={onExportJson}>
+                    <Download className="size-4" />
+                    {canvasT(t, 'common.exportJson')}
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+
           <Badge className="bg-white/10 text-white hover:bg-white/10">
             {canvasT(t, 'studio.workspace')}
           </Badge>
@@ -6997,7 +7059,7 @@ function CanvasStudioInner({
                                       className={cn(
                                         'grid gap-2',
                                         selectedNodeData.nodeType === 'video'
-                                          ? shouldShowSeedanceReferenceMode
+                                          ? shouldShowReferenceMode
                                             ? 'sm:grid-cols-4'
                                             : 'sm:grid-cols-3'
                                           : 'sm:grid-cols-2'
@@ -7128,7 +7190,7 @@ function CanvasStudioInner({
                                       ) : null}
 
                                       {selectedNodeData.nodeType === 'video' &&
-                                      shouldShowSeedanceReferenceMode ? (
+                                      shouldShowReferenceMode ? (
                                         <div className="space-y-2">
                                           <Label className="text-xs tracking-[0.2em] text-white/45 uppercase">
                                             {canvasT(t, 'studio.referenceMode')}
@@ -7528,8 +7590,12 @@ function CanvasStudioInner({
 
 export function CanvasStudioShell({
   initialCanvas,
+  onImportJson,
+  onExportJson,
 }: {
   initialCanvas: CanvasDocumentRecord;
+  onImportJson?: () => void;
+  onExportJson?: () => void;
 }) {
   return (
     <>
@@ -7631,7 +7697,11 @@ export function CanvasStudioShell({
         }
       `}</style>
       <ReactFlowProvider>
-        <CanvasStudioInner initialCanvas={initialCanvas} />
+        <CanvasStudioInner
+          initialCanvas={initialCanvas}
+          onImportJson={onImportJson}
+          onExportJson={onExportJson}
+        />
       </ReactFlowProvider>
     </>
   );

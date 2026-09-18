@@ -18,6 +18,8 @@
     "replicateApiToken": "Replicate API token",
     "cyberbaraApiKey": "Cyberbara API key",
     "cyberbaraBaseUrl": "Cyberbara base URL",
+    "bailianApiKey": "Aliyun Bailian (DashScope) API key",
+    "bailianBaseUrl": "Bailian base URL",
     "uploadStorage": "Upload storage",
     "s3Endpoint": "S3 endpoint",
     "s3Region": "S3 region",
@@ -29,6 +31,8 @@
   },
   "storage": {
     "disabled": "Disabled",
+    "local": "Local (server disk)",
+    "localHint": "No extra setup: uploads stay on this server's disk, and photos are converted automatically into a format Bailian can read at generation time.",
     "cyberbara": "Cyberbara uploads",
     "s3": "S3-compatible"
   },

@@ -393,6 +393,7 @@ export async function updateLocalCanvasRun({
   runId,
   status,
   aiTaskId,
+  provider,
   responsePayload,
   outputAsset,
   errorCode,
@@ -404,6 +405,7 @@ export async function updateLocalCanvasRun({
   runId: string;
   status?: CanvasRunStatus;
   aiTaskId?: string | null;
+  provider?: string | null;
   responsePayload?: Record<string, unknown> | null;
   outputAsset?: CanvasNodeRunRecord['outputAsset'];
   errorCode?: string | null;
@@ -423,6 +425,9 @@ export async function updateLocalCanvasRun({
     }
     if (aiTaskId !== undefined) {
       run.aiTaskId = aiTaskId;
+    }
+    if (provider !== undefined) {
+      run.provider = provider;
     }
     if (responsePayload !== undefined) {
       run.responsePayload = responsePayload;

@@ -1,4 +1,5 @@
 import { StorageManager } from './core';
+import { LocalStorageProvider } from './local';
 import { S3CompatibleStorageProvider } from './s3-compatible';
 import type { ProviderSettings } from '@/lib/types';
 
@@ -18,6 +19,10 @@ function buildStorageManager(input: {
 }) {
   const manager = new StorageManager();
   const provider = input.provider.trim().toLowerCase();
+
+  if (provider === 'local') {
+    manager.addProvider(new LocalStorageProvider(), true);
+  }
 
   if (provider === 's3-compatible') {
     const endpoint = input.endpoint.trim();

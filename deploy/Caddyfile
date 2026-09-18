@@ -1,0 +1,48 @@
+# Open Canvas public entrypoint over IPv6 direct.
+#
+# Path: visitor -> Cloudflare (DNS only, AAAA) -> this Mac's public IPv6
+#       -> Caddy :443 (TLS + basic auth) -> 127.0.0.1:8090 (open-canvas container)
+#
+# Certificates use the DNS-01 challenge because macOS's own Apache httpd already
+# holds port 80, so the HTTP-01 challenge cannot be answered here.
+{
+	email charlie@generalwu.com
+	auto_https disable_redirects
+	# Clash Verge TUN answers every local DNS query with a fake-ip (198.18.x.x),
+	# so Caddy's own propagation check never sees the TXT record it just created.
+	# Let's Encrypt validates against Cloudflare's authoritative nameservers
+	# directly, which is unaffected. Disable the local check and wait instead.
+	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN} {
+		propagation_delay 45s
+		propagation_timeout -1
+	}
+}
+
+canvas.generalwu.com {
+	bind ::
+
+	encode zstd gzip
+
+	basic_auth {
+		{env.CANVAS_AUTH_USER} {env.CANVAS_AUTH_HASH}
+	}
+
+	header {
+		-Server
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	reverse_proxy 127.0.0.1:8090 {
+		header_up X-Forwarded-Proto https
+		flush_interval -1
+	}
+
+	log {
+		output file /Users/johncarter/Documents/Script/open-canvas/deploy/caddy-access.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+		format json
+	}
+}

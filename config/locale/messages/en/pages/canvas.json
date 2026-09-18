@@ -16,6 +16,7 @@
     "file": "File",
     "importJson": "Import JSON",
     "exportJson": "Export JSON",
+    "backToCanvasList": "Back to canvas list",
     "untitledCanvas": "Untitled Canvas",
     "untitledCanvasNumber": "Untitled Canvas {index}",
     "untitledNode": "Untitled Node",

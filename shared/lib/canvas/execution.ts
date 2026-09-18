@@ -1,6 +1,7 @@
 import { AIMediaType, AITaskStatus } from '@/extensions/ai/types';
 import type { AICreditScene } from '@/shared/lib/ai-credit-rules';
 import {
+  isWanCanvasVideoModel,
   shouldSendCanvasVideoAspectRatio,
   shouldSendCanvasVideoDuration,
   shouldSendCanvasVideoResolution,
@@ -100,6 +101,10 @@ function isGeminiOmniCanvasVideoModel(model: string): boolean {
 
 function isSeedanceCanvasReferenceModeModel(model: string): boolean {
   return isArkCanvasVideoModel(model) || isKieSeedanceCanvasVideoModel(model);
+}
+
+function isCanvasReferenceModeModel(model: string): boolean {
+  return isSeedanceCanvasReferenceModeModel(model) || isWanCanvasVideoModel(model);
 }
 
 function normalizeCanvasImageHandle(
@@ -539,6 +544,11 @@ export function buildCanvasMediaTaskDescriptor(
               isArkCanvasVideoModel(nodeData.model)
                 ? nodeData.referenceMode
                 : undefined,
+            wan_reference_mode:
+              scene === 'image-to-video' &&
+              isWanCanvasVideoModel(nodeData.model)
+                ? nodeData.referenceMode
+                : undefined,
             image_input: inputs.imageInputs.map((item) => item.url),
             video_input: inputs.videoInputs.map((item) => item.url),
             audio_input: inputs.audioInputs.map((item) => item.url),
@@ -626,6 +636,12 @@ export function buildCanvasMediaTaskDescriptor(
   ) {
     delete options.ark_mode;
   }
+  if (
+    typeof options.wan_reference_mode !== 'string' ||
+    options.wan_reference_mode.trim().length === 0
+  ) {
+    delete options.wan_reference_mode;
+  }
   if ('audio_input' in options) {
     const audioInput = options.audio_input;
     if (!Array.isArray(audioInput) || audioInput.length === 0) {
@@ -636,12 +652,13 @@ export function buildCanvasMediaTaskDescriptor(
       nodeData.model !== 'seedance-2-fast-stable' &&
       nodeData.model !== 'seedance-2-ark' &&
       nodeData.model !== 'seedance-2-fast-ark' &&
-      nodeData.model !== 'seedance-2-mini-ark'
+      nodeData.model !== 'seedance-2-mini-ark' &&
+      !isWanCanvasVideoModel(nodeData.model)
     ) {
       return {
         ok: false,
         code: 'unsupported_input_type',
-        message: '当前只有 Seedance 2 Stable 和 Ark 系列视频模型支持音频输入。',
+        message: '当前只有 Seedance 2 系列和 Wan 3.0 视频模型支持音频输入。',
       };
     } else if (
       nodeData.nodeType === 'video' &&
@@ -703,7 +720,7 @@ export function buildCanvasMediaTaskDescriptor(
 
   if (
     nodeData.nodeType === 'video' &&
-    isSeedanceCanvasReferenceModeModel(nodeData.model) &&
+    isCanvasReferenceModeModel(nodeData.model) &&
     scene === 'image-to-video'
   ) {
     if (
@@ -737,6 +754,37 @@ export function buildCanvasMediaTaskDescriptor(
         ok: false,
         code: 'unsupported_input_type',
         message: '首帧和首尾帧模式不支持音频或视频参考。',
+      };
+    }
+  }
+
+  if (
+    nodeData.nodeType === 'video' &&
+    isWanCanvasVideoModel(nodeData.model) &&
+    (nodeData.referenceMode === 'omni_reference' ||
+      nodeData.referenceMode === 'auto')
+  ) {
+    if (inputs.imageInputs.length > 10) {
+      return {
+        ok: false,
+        code: 'unsupported_input_type',
+        message: 'Wan 3.0 参考生视频最多支持 10 张参考图。',
+      };
+    }
+
+    if (inputs.videoInputs.length > 5) {
+      return {
+        ok: false,
+        code: 'unsupported_input_type',
+        message: 'Wan 3.0 参考生视频最多支持 5 段参考视频。',
+      };
+    }
+
+    if (inputs.audioInputs.length > 5) {
+      return {
+        ok: false,
+        code: 'unsupported_input_type',
+        message: 'Wan 3.0 参考生视频最多支持 5 段参考音频。',
       };
     }
   }

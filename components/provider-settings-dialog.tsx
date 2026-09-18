@@ -56,7 +56,8 @@ function hasAnyApiKey(settings: ProviderSettings) {
   return Boolean(
     settings.cyberbaraApiKey.trim() ||
       settings.openrouterApiKey.trim() ||
-      settings.replicateApiToken.trim()
+      settings.replicateApiToken.trim() ||
+      settings.bailianApiKey.trim()
   );
 }
 
@@ -186,6 +187,37 @@ function ProviderSettingsFields({
               <FieldError message={fieldErrors.cyberbaraBaseUrl} />
             </div>
           </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="bailianApiKey">{t('fields.bailianApiKey')}</Label>
+              <Input
+                id="bailianApiKey"
+                type="password"
+                value={settings.bailianApiKey}
+                onChange={(event) =>
+                  onChange('bailianApiKey', event.target.value)
+                }
+                placeholder="sk-..."
+                className="border-white/10 bg-black/40 text-white"
+              />
+              <FieldError message={fieldErrors.bailianApiKey} />
+            </div>
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="bailianBaseUrl">{t('fields.bailianBaseUrl')}</Label>
+              <Input
+                id="bailianBaseUrl"
+                value={settings.bailianBaseUrl}
+                onChange={(event) =>
+                  onChange('bailianBaseUrl', event.target.value)
+                }
+                placeholder="https://dashscope.aliyuncs.com"
+                className="border-white/10 bg-black/40 text-white"
+              />
+              <FieldError message={fieldErrors.bailianBaseUrl} />
+            </div>
+          </div>
         </>
       ) : null}
 
@@ -207,6 +239,7 @@ function ProviderSettingsFields({
             </SelectTrigger>
             <SelectContent className="border-white/10 bg-[#0f1115] text-white">
               <SelectItem value="disabled">{t('storage.disabled')}</SelectItem>
+              <SelectItem value="local">{t('storage.local')}</SelectItem>
               <SelectItem value="cyberbara">{t('storage.cyberbara')}</SelectItem>
               <SelectItem value="s3-compatible">{t('storage.s3')}</SelectItem>
             </SelectContent>
@@ -301,6 +334,12 @@ function ProviderSettingsFields({
               />
             </div>
           </div>
+        ) : null}
+
+        {settings.storageProvider === 'local' ? (
+          <p className="text-xs leading-relaxed text-white/60">
+            {t('storage.localHint')}
+          </p>
         ) : null}
         </div>
       ) : null}
@@ -526,7 +565,7 @@ export function OnboardingWizard({
                 {t('readyIntro')}
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-lg border border-white/10 bg-black/30 p-4">
                 <div className="text-sm font-medium">OpenRouter</div>
                 <div className="mt-1 text-xs text-white/55">
@@ -543,6 +582,12 @@ export function OnboardingWizard({
                 <div className="text-sm font-medium">Cyberbara</div>
                 <div className="mt-1 text-xs text-white/55">
                   {settings.cyberbaraApiKey ? t('status.configured') : t('status.notSet')}
+                </div>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-black/30 p-4">
+                <div className="text-sm font-medium">Bailian (DashScope)</div>
+                <div className="mt-1 text-xs text-white/55">
+                  {settings.bailianApiKey ? t('status.configured') : t('status.notSet')}
                 </div>
               </div>
             </div>

@@ -1,0 +1,15 @@
+node_modules
+.next
+.open-next
+.wrangler
+.git
+.gitignore
+data
+*.log
+.env
+.env.*
+.DS_Store
+README.md
+RELEASING.md
+CONTRIBUTING.md
+

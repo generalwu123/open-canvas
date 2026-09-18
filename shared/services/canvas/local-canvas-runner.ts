@@ -3,6 +3,11 @@ import {
   queryCyberbaraTask,
   runCyberbaraText,
 } from '@/lib/cyberbara';
+import {
+  createDashScopeImage,
+  createDashScopeVideo,
+  queryDashScopeTask,
+} from '@/lib/dashscope';
 import type { ProviderSettings } from '@/lib/types';
 import {
   buildCanvasNodeTaskDescriptor,
@@ -28,8 +33,33 @@ function nowIso() {
 }
 
 function getProviderMessage(settings: ProviderSettings) {
+  if (
+    settings.cyberbaraApiKey.trim() ||
+    settings.bailianApiKey.trim() ||
+    settings.openrouterApiKey.trim() ||
+    settings.replicateApiToken.trim()
+  ) {
+    return;
+  }
+
+  throw new Error(
+    'A provider API key is required. Open Settings and save your key first.'
+  );
+}
+
+function requireBailianKey(settings: ProviderSettings) {
+  if (!settings.bailianApiKey.trim()) {
+    throw new Error(
+      'Bailian (DashScope) API key is required. Open Settings and save your key first.'
+    );
+  }
+}
+
+function requireCyberbaraKey(settings: ProviderSettings) {
   if (!settings.cyberbaraApiKey.trim()) {
-    throw new Error('Cyberbara API key is required. Open Settings and save your key first.');
+    throw new Error(
+      'Cyberbara API key is required. Open Settings and save your key first.'
+    );
   }
 }
 
@@ -130,7 +160,7 @@ export async function executeLocalCanvasNode({
     status: 'running',
     triggerType,
     scene: descriptor.scene,
-    provider: 'cyberbara',
+    provider: descriptor.kind === 'text' ? 'cyberbara' : descriptor.provider,
     model: descriptor.model,
     prompt: descriptor.prompt,
     aiTaskId: null,
@@ -156,6 +186,8 @@ export async function executeLocalCanvasNode({
   });
 
   if (descriptor.kind === 'text') {
+    requireCyberbaraKey(settings);
+
     const result = await runCyberbaraText({
       apiKey: settings.cyberbaraApiKey,
       model: descriptor.model,
@@ -205,6 +237,113 @@ export async function executeLocalCanvasNode({
 
   const mediaDescriptor = descriptor as CanvasMediaTaskDescriptor;
   const { mediaUrl, mediaKind } = getPrimaryMediaInput(mediaDescriptor);
+
+  if (mediaDescriptor.provider === 'bailian') {
+    requireBailianKey(settings);
+
+    if (nodeData.nodeType === 'image') {
+      const imageResult = await createDashScopeImage({
+        apiKey: settings.bailianApiKey,
+        baseUrl: settings.bailianBaseUrl,
+        model: mediaDescriptor.model,
+        prompt: mediaDescriptor.prompt,
+        options: mediaDescriptor.options,
+      });
+
+      const imageMedia = createGeneratedMedia(imageResult.outputMediaUrl, 'image');
+      const completedAt = nowIso();
+
+      await updateLocalCanvasRun({
+        canvasId,
+        runId: run.id,
+        status: 'success',
+        aiTaskId: null,
+        provider: 'bailian',
+        responsePayload: {
+          predictionId: '',
+          outputMediaUrl: imageResult.outputMediaUrl,
+          allImageUrls: imageResult.allImageUrls,
+        },
+        outputAsset: imageMedia,
+        finishedAt: completedAt,
+      });
+
+      const imagePatch: CanvasNodePatch = {
+        nodeId,
+        status: 'success',
+        errorMessage: null,
+        lastRunId: run.id,
+        lastCompletedAt: completedAt,
+        lastScene: mediaDescriptor.scene,
+        costCredits: 0,
+        image: imageMedia,
+        imageOutputs: [imageMedia],
+        selectedImageIndex: 0,
+      };
+      const imageCanvas = await applyLocalCanvasNodePatch({
+        canvasId,
+        patch: imagePatch,
+      });
+      if (!imageCanvas) {
+        throw new Error('canvas patch failed');
+      }
+
+      const imageRun = await findLocalCanvasRun({ canvasId, runId: run.id });
+      return {
+        run: imageRun || run,
+        nodePatch: imagePatch,
+        revision: imageCanvas.revision,
+      };
+    }
+
+    const bailianResult = await createDashScopeVideo({
+      apiKey: settings.bailianApiKey,
+      baseUrl: settings.bailianBaseUrl,
+      model: mediaDescriptor.model,
+      prompt: mediaDescriptor.prompt,
+      options: mediaDescriptor.options,
+      scene: mediaDescriptor.scene,
+    });
+
+    await updateLocalCanvasRun({
+      canvasId,
+      runId: run.id,
+      status: 'running',
+      aiTaskId: bailianResult.predictionId,
+      provider: 'bailian',
+      responsePayload: {
+        predictionId: bailianResult.predictionId,
+        outputMediaUrl: '',
+      },
+    });
+
+    const bailianPatch: CanvasNodePatch = {
+      nodeId,
+      status: 'running',
+      errorMessage: null,
+      lastRunId: run.id,
+      lastCompletedAt: null,
+      lastScene: mediaDescriptor.scene,
+      costCredits: 0,
+    };
+    const bailianCanvas = await applyLocalCanvasNodePatch({
+      canvasId,
+      patch: bailianPatch,
+    });
+    if (!bailianCanvas) {
+      throw new Error('canvas patch failed');
+    }
+
+    const bailianRun = await findLocalCanvasRun({ canvasId, runId: run.id });
+    return {
+      run: bailianRun || run,
+      nodePatch: bailianPatch,
+      revision: bailianCanvas.revision,
+    };
+  }
+
+  requireCyberbaraKey(settings);
+
   const result = await createCyberbaraGeneration({
     apiKey: settings.cyberbaraApiKey,
     baseUrl: settings.cyberbaraBaseUrl,
@@ -303,11 +442,24 @@ export async function queryLocalCanvasNodeRun({
     };
   }
 
-  const task = await queryCyberbaraTask({
-    apiKey: settings.cyberbaraApiKey,
-    baseUrl: settings.cyberbaraBaseUrl,
-    taskId: run.aiTaskId,
-  });
+  const task =
+    run.provider === 'bailian'
+      ? await (async () => {
+          requireBailianKey(settings);
+          return queryDashScopeTask({
+            apiKey: settings.bailianApiKey,
+            baseUrl: settings.bailianBaseUrl,
+            taskId: run.aiTaskId as string,
+          });
+        })()
+      : await (async () => {
+          requireCyberbaraKey(settings);
+          return queryCyberbaraTask({
+            apiKey: settings.cyberbaraApiKey,
+            baseUrl: settings.cyberbaraBaseUrl,
+            taskId: run.aiTaskId as string,
+          });
+        })();
 
   if (task.status === 'running') {
     const nextRun = await updateLocalCanvasRun({
@@ -329,12 +481,17 @@ export async function queryLocalCanvasNodeRun({
 
   if (task.status === 'error') {
     const completedAt = nowIso();
+    const taskErrorMessage =
+      'errorMessage' in task && typeof task.errorMessage === 'string'
+        ? task.errorMessage
+        : '';
+    const failureMessage = taskErrorMessage || 'Generation failed';
     const nextRun = await updateLocalCanvasRun({
       canvasId,
       runId,
       status: 'failed',
       errorCode: 'generation_failed',
-      errorMessage: 'Generation failed',
+      errorMessage: failureMessage,
       finishedAt: completedAt,
       responsePayload: {
         predictionId: task.predictionId,
@@ -343,7 +500,7 @@ export async function queryLocalCanvasNodeRun({
     const nodePatch: CanvasNodePatch = {
       nodeId: run.nodeId,
       status: 'error',
-      errorMessage: 'Generation failed',
+      errorMessage: failureMessage,
       lastRunId: run.id,
       lastCompletedAt: completedAt,
       lastScene: run.scene,

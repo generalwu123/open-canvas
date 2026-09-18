@@ -18,6 +18,8 @@
     "replicateApiToken": "Replicate API Token",
     "cyberbaraApiKey": "Cyberbara API Key",
     "cyberbaraBaseUrl": "Cyberbara Base URL",
+    "bailianApiKey": "阿里云百炼（DashScope）API Key",
+    "bailianBaseUrl": "百炼 Base URL",
     "uploadStorage": "上传存储",
     "s3Endpoint": "S3 Endpoint",
     "s3Region": "S3 区域",
@@ -29,6 +31,8 @@
   },
   "storage": {
     "disabled": "禁用",
+    "local": "本地存储（服务器磁盘）",
+    "localHint": "无需额外配置：上传的文件保存在服务器磁盘，生成时照片会自动转换成百炼可读取的格式。",
     "cyberbara": "Cyberbara 上传",
     "s3": "S3 兼容存储"
   },

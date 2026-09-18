@@ -1,19 +1,11 @@
 'use client';
 
 import { useRef } from 'react';
-import { Download, FileJson, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { exportCanvasToJson, importCanvasFromJsonFile } from '@/lib/canvas-json';
 import { useRouter } from '@/i18n/navigation';
 import { CanvasStudioShell } from '@/shared/blocks/canvas/canvas-studio-shell';
-import { Button } from '@/shared/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
 import { canvasT } from '@/shared/lib/canvas/i18n';
 import { useCanvasTranslations } from '@/shared/lib/canvas/use-canvas-translations';
 import type { CanvasDocumentRecord } from '@/shared/lib/canvas/types';
@@ -63,7 +55,11 @@ export function OpenCanvasShell({
 
   return (
     <>
-      <CanvasStudioShell initialCanvas={initialCanvas} />
+      <CanvasStudioShell
+        initialCanvas={initialCanvas}
+        onImportJson={() => fileInputRef.current?.click()}
+        onExportJson={() => void handleExportCanvas()}
+      />
 
       <input
         ref={fileInputRef}
@@ -72,34 +68,6 @@ export function OpenCanvasShell({
         className="hidden"
         onChange={handleImportCanvas}
       />
-
-      <div className="fixed left-4 top-4 z-[120]">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-white/10 bg-black/80 text-white backdrop-blur hover:bg-black"
-            >
-              <FileJson className="size-4" />
-              {canvasT(t, 'common.file')}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="start"
-            className="border-white/10 bg-[#121212] text-white"
-          >
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-              <Upload className="size-4" />
-              {canvasT(t, 'common.importJson')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void handleExportCanvas()}>
-              <Download className="size-4" />
-              {canvasT(t, 'common.exportJson')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
     </>
   );
 }
