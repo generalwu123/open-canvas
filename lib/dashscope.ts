@@ -475,6 +475,40 @@ const IMAGE_SIZE_PRESETS: Record<string, number> = {
   '4K': 4096,
 };
 
+// DashScope rejects images whose total pixel count falls outside this range.
+const IMAGE_MIN_PIXELS = 589824;
+const IMAGE_MAX_PIXELS = 16777216;
+
+// Extreme ratios at low presets (e.g. 21:9 at 1K -> 1024*448) land below the
+// minimum, so scale both sides proportionally and re-round to the 64px grid
+// until the request fits inside the accepted pixel range.
+function clampImageSize(width: number, height: number) {
+  let w = width;
+  let h = height;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const pixels = w * h;
+    if (pixels >= IMAGE_MIN_PIXELS && pixels <= IMAGE_MAX_PIXELS) {
+      return `${w}*${h}`;
+    }
+    const target =
+      pixels < IMAGE_MIN_PIXELS ? IMAGE_MIN_PIXELS : IMAGE_MAX_PIXELS;
+    const scale = Math.sqrt(target / pixels);
+    const nextW = Math.max(64, Math.round((w * scale) / 64) * 64);
+    const nextH = Math.max(64, Math.round((h * scale) / 64) * 64);
+    if (nextW === w && nextH === h) {
+      if (pixels < IMAGE_MIN_PIXELS) {
+        h += 64;
+      } else {
+        h = Math.max(64, h - 64);
+      }
+      continue;
+    }
+    w = nextW;
+    h = nextH;
+  }
+  return `${w}*${h}`;
+}
+
 // Wan image models accept either a resolution preset ("2K") or an explicit
 // "width*height" size. Canvas nodes store resolution + aspect ratio, so
 // translate those into the long-side-preserving size string the API expects.
@@ -515,14 +549,14 @@ function buildImageSizeParameter(
       64,
       Math.round((longSide * ratioHeight) / ratioWidth / 64) * 64
     );
-    return `${longSide}*${shortSide}`;
+    return clampImageSize(longSide, shortSide);
   }
 
   const shortSide = Math.max(
     64,
     Math.round((longSide * ratioWidth) / ratioHeight / 64) * 64
   );
-  return `${shortSide}*${longSide}`;
+  return clampImageSize(shortSide, longSide);
 }
 
 function extractImageUrls(payload: unknown) {
