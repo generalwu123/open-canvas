@@ -214,7 +214,13 @@
     "addImage": "添加图片",
     "addVideo": "添加视频",
     "addAudio": "添加音频",
-    "imagePreview": "图片预览"
+    "imagePreview": "图片预览",
+    "extractCurrentFrame": "提取当前帧",
+    "extractLastFrame": "提取尾帧",
+    "extractFrameNoVideo": "该视频节点还没有可播放的视频。",
+    "extractFrameWorking": "正在提取静帧…",
+    "extractFrameDone": "已提取静帧并生成新的图片节点。",
+    "extractFrameFailed": "静帧提取失败。"
   },
   "runtime": {
     "textNodeNoVideo": "文本节点不支持直接接入视频输入。",

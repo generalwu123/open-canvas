@@ -109,8 +109,7 @@
     "useTemplateFailed": "Failed to use template.",
     "unsupportedFileType": "Unsupported file type: {name}",
     "importFileFailed": "Failed to import {name}",
-    "newerCanvasVersionDetected": "A newer canvas version was detected."
-    ,
+    "newerCanvasVersionDetected": "A newer canvas version was detected.",
     "exportCanvasSuccess": "Canvas exported as JSON.",
     "exportCanvasFailed": "Failed to export canvas.",
     "importCanvasSuccess": "Imported \"{title}\"."
@@ -215,7 +214,13 @@
     "addImage": "Add image",
     "addVideo": "Add video",
     "addAudio": "Add audio",
-    "imagePreview": "Image preview"
+    "imagePreview": "Image preview",
+    "extractCurrentFrame": "Extract frame",
+    "extractLastFrame": "Extract last frame",
+    "extractFrameNoVideo": "This video node has no playable video yet.",
+    "extractFrameWorking": "Extracting frame...",
+    "extractFrameDone": "Frame extracted into a new image node.",
+    "extractFrameFailed": "Frame extraction failed."
   },
   "runtime": {
     "textNodeNoVideo": "Text nodes do not support direct video input.",

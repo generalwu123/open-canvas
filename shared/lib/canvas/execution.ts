@@ -1,6 +1,7 @@
 import { AIMediaType, AITaskStatus } from '@/extensions/ai/types';
 import type { AICreditScene } from '@/shared/lib/ai-credit-rules';
 import {
+  isWanCanvasImageModel,
   isWanCanvasVideoModel,
   shouldSendCanvasVideoAspectRatio,
   shouldSendCanvasVideoDuration,
@@ -363,6 +364,32 @@ export function composeCanvasPrompt({
   }
 
   return trimmedPrompt || textContext;
+}
+
+const WAN_REFERENCE_TOKEN_TARGETS: Record<string, string> = {
+  image: '图',
+  图片: '图',
+  图: '图',
+  video: '视频',
+  视频: '视频',
+  audio: '音频',
+  音频: '音频',
+};
+
+// Wan (DashScope) reference generation expects prompts to cite reference media
+// as 图N / 视频N / 音频N, while the canvas inserts @imageN / @videoN / @audioN
+// tokens. Rewrite the tokens right before the request so the citations match
+// the media order sent to the provider (both follow incoming-edge order).
+export function rewriteCanvasPromptReferenceTokensForWan(
+  prompt: string
+): string {
+  return prompt.replace(
+    /@(image|video|audio|图片|视频|音频)(\d+)/gi,
+    (match, kind: string, index: string) => {
+      const target = WAN_REFERENCE_TOKEN_TARGETS[kind.toLowerCase()];
+      return target ? `${target}${index}` : match;
+    }
+  );
 }
 
 export function buildCanvasTextUserMessage({
@@ -821,6 +848,11 @@ export function buildCanvasMediaTaskDescriptor(
     };
   }
 
+  const finalPrompt =
+    isWanCanvasVideoModel(nodeData.model) || isWanCanvasImageModel(nodeData.model)
+      ? rewriteCanvasPromptReferenceTokensForWan(prompt)
+      : prompt;
+
   return {
     kind: 'media',
     mediaType,
@@ -828,7 +860,7 @@ export function buildCanvasMediaTaskDescriptor(
     provider: route.provider,
     model: route.model,
     scene: route.scene,
-    prompt,
+    prompt: finalPrompt,
     options: route.options,
     inputs,
   };

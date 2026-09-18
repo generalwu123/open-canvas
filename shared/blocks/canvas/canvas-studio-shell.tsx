@@ -29,7 +29,9 @@ import {
   ArrowLeft,
   AudioLines,
   Bold,
+  Camera,
   ChevronDown,
+  Clapperboard,
   Coins,
   Copy,
   Download,
@@ -69,6 +71,7 @@ import { Link } from '@/core/i18n/navigation';
 import { AIMediaType } from '@/extensions/ai/types';
 import { CanvasMediaControl } from '@/shared/blocks/canvas/canvas-media-control';
 import { LazyVideo } from '@/shared/blocks/common/lazy-video';
+import { extractCanvasVideoFrame } from '@/shared/lib/canvas/frame-extract';
 import { ModelSelectOption } from '@/shared/blocks/generator/model-select-option';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -1364,6 +1367,7 @@ function renderNodePreview(
     onToggleImagePicker?: (nodeId: string) => void;
     onSelectImageOutput?: (nodeId: string, index: number) => void;
     onSelectVideoOutput?: (nodeId: string, index: number) => void;
+    onExtractFrame?: (nodeId: string, target: 'current' | 'last') => void;
   }
 ) {
   const onPreviewImage = options?.onPreviewImage;
@@ -1546,7 +1550,7 @@ function renderNodePreview(
   const hasMultipleVideos = videoHistory.length > 1;
 
   return primaryVideo?.url ? (
-    <div className="relative h-full cursor-grab overflow-hidden rounded-[20px] border border-white/8 bg-black">
+    <div className="group/video-card relative h-full cursor-grab overflow-hidden rounded-[20px] border border-white/8 bg-black">
       <LazyVideo
         src={getMediaDisplayUrl(primaryVideo.url)}
         controls
@@ -1576,6 +1580,36 @@ function renderNodePreview(
             </option>
           ))}
         </select>
+      ) : null}
+      {options?.onExtractFrame ? (
+        <div className="nodrag nopan absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 opacity-0 transition-opacity duration-150 group-hover/video-card:opacity-100">
+          <button
+            type="button"
+            title={canvasT(t, 'studio.extractCurrentFrame')}
+            onClick={(event) => {
+              event.stopPropagation();
+              options.onExtractFrame?.(nodeId, 'current');
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/12 bg-black/78 px-2.5 text-xs font-medium text-white/85 shadow-[0_12px_28px_rgba(0,0,0,0.38)] transition hover:border-white/30 hover:text-white"
+          >
+            <Camera className="size-3.5" />
+            {canvasT(t, 'studio.extractCurrentFrame')}
+          </button>
+          <button
+            type="button"
+            title={canvasT(t, 'studio.extractLastFrame')}
+            onClick={(event) => {
+              event.stopPropagation();
+              options.onExtractFrame?.(nodeId, 'last');
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/12 bg-black/78 px-2.5 text-xs font-medium text-white/85 shadow-[0_12px_28px_rgba(0,0,0,0.38)] transition hover:border-white/30 hover:text-white"
+          >
+            <Clapperboard className="size-3.5" />
+            {canvasT(t, 'studio.extractLastFrame')}
+          </button>
+        </div>
       ) : null}
     </div>
   ) : (
@@ -3134,6 +3168,7 @@ function BaseCanvasNode({
   onToggleImagePicker,
   onSelectImageOutput,
   onSelectVideoOutput,
+  onExtractFrame,
 }: NodeProps<CanvasFlowNode> & {
   onPreviewImage?: (image: CanvasImagePreviewState) => void;
   onTriggerConnectionMenu?: (options: {
@@ -3147,6 +3182,7 @@ function BaseCanvasNode({
   onToggleImagePicker?: (nodeId: string) => void;
   onSelectImageOutput?: (nodeId: string, index: number) => void;
   onSelectVideoOutput?: (nodeId: string, index: number) => void;
+  onExtractFrame?: (nodeId: string, target: 'current' | 'last') => void;
 }) {
   const locale = useCanvasLocale();
   const t = useCanvasTranslations();
@@ -3431,6 +3467,7 @@ function BaseCanvasNode({
               onToggleImagePicker,
               onSelectImageOutput,
               onSelectVideoOutput,
+              onExtractFrame,
             })}
           </button>
         )
@@ -3474,6 +3511,7 @@ function BaseCanvasNode({
               onToggleImagePicker,
               onSelectImageOutput,
               onSelectVideoOutput,
+              onExtractFrame,
             })}
           </button>
         )
@@ -3488,6 +3526,7 @@ function BaseCanvasNode({
             onToggleImagePicker,
             onSelectImageOutput,
             onSelectVideoOutput,
+            onExtractFrame,
           })}
           {data.status === 'running' || data.status === 'queued' ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/46 backdrop-blur-[2px]">
@@ -3514,6 +3553,7 @@ function BaseCanvasNode({
             onToggleImagePicker,
             onSelectImageOutput,
             onSelectVideoOutput,
+            onExtractFrame,
           })}
           {data.status === 'running' || data.status === 'queued' ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-[20px] bg-black/46 backdrop-blur-[2px]">
@@ -4259,6 +4299,76 @@ function CanvasStudioInner({
     [openQuickAddMenu]
   );
 
+  const handleExtractVideoFrame = useCallback(
+    async (nodeId: string, target: 'current' | 'last') => {
+      const sourceNode = useCanvasStore
+        .getState()
+        .nodes.find((item) => item.id === nodeId);
+      if (!sourceNode || sourceNode.data.nodeType !== 'video') {
+        return;
+      }
+
+      const videoMedia = sourceNode.data.video;
+      if (!videoMedia?.url) {
+        toast.error(canvasT(t, 'studio.extractFrameNoVideo'));
+        return;
+      }
+
+      const videoElement = document.querySelector<HTMLVideoElement>(
+        `.react-flow__node[data-id="${nodeId}"] video`
+      );
+      const currentTime = videoElement?.currentTime;
+
+      toast.info(canvasT(t, 'studio.extractFrameWorking'));
+
+      try {
+        const blob = await extractCanvasVideoFrame({
+          url: getMediaDisplayUrl(videoMedia.url),
+          target,
+          currentTime,
+        });
+        const uploadedMedia = await uploadCanvasImage(
+          new File([blob], `frame-${Date.now()}.png`, { type: 'image/png' })
+        );
+
+        const viewportRect = canvasViewportRef.current?.getBoundingClientRect();
+        const sourceScreen = reactFlow.flowToScreenPosition({
+          x: sourceNode.position.x,
+          y: sourceNode.position.y,
+        });
+        const flowPosition = viewportRect
+          ? reactFlow.screenToFlowPosition({
+              x: Math.min(sourceScreen.x + 40, viewportRect.right - 80),
+              y: Math.min(sourceScreen.y + 260, viewportRect.bottom - 80),
+            })
+          : { x: sourceNode.position.x + 40, y: sourceNode.position.y + 260 };
+
+        const result = addNode('image', flowPosition, locale);
+        if (!result.ok) {
+          toast.error(translateCanvasRuntimeMessage(t, result.message));
+          return;
+        }
+
+        updateNodeData(result.nodeId, {
+          image: uploadedMedia,
+          imageOutputs: [uploadedMedia],
+          selectedImageIndex: 0,
+          inputMode: 'upload',
+          status: 'success',
+        } as Partial<CanvasFlowNode['data']>);
+
+        toast.success(canvasT(t, 'studio.extractFrameDone'));
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : canvasT(t, 'studio.extractFrameFailed')
+        );
+      }
+    },
+    [addNode, locale, reactFlow, t, updateNodeData]
+  );
+
   const nodeTypes = useMemo(
     () => ({
       text: (props: NodeProps<CanvasFlowNode>) => (
@@ -4270,6 +4380,7 @@ function CanvasStudioInner({
           onToggleImagePicker={handleToggleNodeImagePicker}
           onSelectImageOutput={handleNodeImageOutputSelect}
           onSelectVideoOutput={handleNodeVideoOutputSelect}
+          onExtractFrame={handleExtractVideoFrame}
         />
       ),
       note: (props: NodeProps<CanvasFlowNode>) => (
@@ -4281,6 +4392,7 @@ function CanvasStudioInner({
           onToggleImagePicker={handleToggleNodeImagePicker}
           onSelectImageOutput={handleNodeImageOutputSelect}
           onSelectVideoOutput={handleNodeVideoOutputSelect}
+          onExtractFrame={handleExtractVideoFrame}
         />
       ),
       image: (props: NodeProps<CanvasFlowNode>) => (
@@ -4292,6 +4404,7 @@ function CanvasStudioInner({
           onToggleImagePicker={handleToggleNodeImagePicker}
           onSelectImageOutput={handleNodeImageOutputSelect}
           onSelectVideoOutput={handleNodeVideoOutputSelect}
+          onExtractFrame={handleExtractVideoFrame}
         />
       ),
       video: (props: NodeProps<CanvasFlowNode>) => (
@@ -4303,6 +4416,7 @@ function CanvasStudioInner({
           onToggleImagePicker={handleToggleNodeImagePicker}
           onSelectImageOutput={handleNodeImageOutputSelect}
           onSelectVideoOutput={handleNodeVideoOutputSelect}
+          onExtractFrame={handleExtractVideoFrame}
         />
       ),
       audio: (props: NodeProps<CanvasFlowNode>) => (
@@ -4314,6 +4428,7 @@ function CanvasStudioInner({
           onToggleImagePicker={handleToggleNodeImagePicker}
           onSelectImageOutput={handleNodeImageOutputSelect}
           onSelectVideoOutput={handleNodeVideoOutputSelect}
+          onExtractFrame={handleExtractVideoFrame}
         />
       ),
     }),
@@ -4323,6 +4438,7 @@ function CanvasStudioInner({
       handleToggleNodeImagePicker,
       handleNodeImageOutputSelect,
       handleNodeVideoOutputSelect,
+      handleExtractVideoFrame,
     ]
   );
 
