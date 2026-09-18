@@ -1520,7 +1520,11 @@ function renderNodePreview(
             </p>
           </div>
         </div>
-        <audio src={data.audio.url} controls className="w-full" />
+        <audio
+          src={data.audio.url}
+          controls
+          className="nodrag nopan w-full"
+        />
       </div>
     ) : (
       <div className="flex h-full min-h-[190px] cursor-grab items-center justify-center rounded-[20px] border border-dashed border-white/12 bg-white/[0.03] text-white/30">
@@ -1553,7 +1557,7 @@ function renderNodePreview(
           event.preventDefault();
           event.stopPropagation();
         }}
-        className="h-full w-full object-cover"
+        className="nodrag nopan h-full w-full object-cover"
       />
       {hasMultipleVideos ? (
         <select
@@ -6842,7 +6846,7 @@ function CanvasStudioInner({
                             <audio
                               src={selectedNodeData.audio.url}
                               controls
-                              className="mt-2 w-full"
+                              className="nodrag nopan mt-2 w-full"
                             />
                           ) : (
                             <div className="mt-2 rounded-2xl border border-dashed border-white/10 px-3 py-3 text-center text-xs text-white/45">

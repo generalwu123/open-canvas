@@ -416,7 +416,7 @@ export function CanvasMediaControl({
               muted
               playsInline
               preload="metadata"
-              className="h-full w-full object-cover"
+              className="nodrag nopan h-full w-full object-cover"
             />
           ) : (
             <div className="h-full bg-white/[0.02]" />

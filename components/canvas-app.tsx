@@ -329,7 +329,7 @@ function WorkflowNodeCard({ data, selected, id }: NodeProps<FlowNode>) {
         <div className="overflow-hidden rounded-md border border-white/10 bg-black">
           {data.kind === 'video' ? (
             <video
-              className="block aspect-video w-full object-cover"
+              className="nodrag nopan block aspect-video w-full object-cover"
               src={data.outputMediaUrl}
               controls
               muted
@@ -1816,7 +1816,7 @@ export function CanvasApp() {
                     <div className="overflow-hidden rounded-lg border border-white/10 bg-black">
                       {selectedNode.data.kind === 'video' ? (
                         <video
-                          className="block aspect-video w-full object-cover"
+                          className="nodrag nopan block aspect-video w-full object-cover"
                           src={selectedNode.data.outputMediaUrl}
                           controls
                         />
